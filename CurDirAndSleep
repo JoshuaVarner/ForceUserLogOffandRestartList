@@ -1,0 +1,24 @@
+# Get the current directory path
+$directory = Get-Location
+
+# Set the file name and path for the list of host names
+$fileName = "computerList.txt"
+$filePath = Join-Path -Path $directory -ChildPath $fileName
+
+# Read the list of host names from the text file
+$computers = Get-Content $filePath
+
+# Loop through each computer, log off the current user, and restart the computer
+foreach ($computer in $computers) {
+    # Use the built-in "logoff" command to force logoff the current user on the remote computer
+    $output = Invoke-Command -ComputerName $computer -ScriptBlock {logoff.exe /f}
+
+    # Wait for 10 seconds before restarting the remote computer
+    Start-Sleep -Seconds 10
+
+    # Use the built-in "restart-computer" cmdlet to restart the remote computer
+    $output = Invoke-Command -ComputerName $computer -ScriptBlock {restart-computer -force}
+
+    # Display the output of the command to the console
+    Write-Host "Logged off current user and restarted $computer"
+}
