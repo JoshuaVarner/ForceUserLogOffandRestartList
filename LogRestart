@@ -1,0 +1,14 @@
+# Read the list of host names from a text file
+$computers = Get-Content "C:\Path\To\File.txt"
+
+# Loop through each computer, log off the current user, and restart the computer
+foreach ($computer in $computers) {
+    # Use the built-in "logoff" command to force logoff the current user on the remote computer
+    $output = Invoke-Command -ComputerName $computer -ScriptBlock {logoff.exe /f}
+
+    # Use the built-in "restart-computer" cmdlet to restart the remote computer
+    $output = Invoke-Command -ComputerName $computer -ScriptBlock {restart-computer -force}
+
+    # Display the output of the command to the console
+    Write-Host "Logged off current user and restarted $computer"
+}
