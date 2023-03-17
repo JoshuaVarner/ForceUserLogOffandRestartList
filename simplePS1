@@ -1,0 +1,6 @@
+$ComputerNames = Get-Content "PATH_TO_TXT_FILE"
+$Credential = Get-Credential
+
+foreach ($ComputerName in $ComputerNames) {
+    Restart-Computer -ComputerName $ComputerName -Credential $Credential -Force
+}
