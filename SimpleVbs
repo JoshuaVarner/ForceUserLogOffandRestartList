@@ -1,0 +1,34 @@
+Option Explicit
+
+Dim strInputFile, objFSO, objInputFile, strLine, objWMIService, colOperatingSystems, objOperatingSystem
+
+' Specify the input file name
+strInputFile = "computer_list.txt"
+
+' Open the input file for reading
+Set objFSO = CreateObject("Scripting.FileSystemObject")
+Set objInputFile = objFSO.OpenTextFile(strInputFile, 1)
+
+' Loop through each line of the input file
+Do While Not objInputFile.AtEndOfStream
+    ' Read the next line
+    strLine = objInputFile.ReadLine()
+    
+    ' Trim whitespace from the line
+    strLine = Trim(strLine)
+    
+    ' Check if the line is empty or a comment
+    If strLine <> "" And Left(strLine, 1) <> "#" Then
+        ' Connect to the WMI service on the remote computer
+        Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & strLine & "\root\cimv2")
+        
+        ' Log off the current user and restart the computer
+        For Each objOperatingSystem in objWMIService.ExecQuery("Select * from Win32_OperatingSystem")
+            objOperatingSystem.Win32Shutdown(4)
+            objOperatingSystem.Reboot()
+        Next
+    End If
+Loop
+
+' Close the input file
+objInputFile.Close
