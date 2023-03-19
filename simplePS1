@@ -1,6 +1,5 @@
-$ComputerNames = Get-Content "PATH_TO_TXT_FILE"
-$Credential = Get-Credential
+$ComputerNames = Get-Content ./computerList.txt
 
 foreach ($ComputerName in $ComputerNames) {
-    Restart-Computer -ComputerName $ComputerName -Credential $Credential -Force
+    Restart-Computer -ComputerName $ComputerName -Force
 }
