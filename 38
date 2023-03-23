@@ -1,0 +1,51 @@
+# Define the list of host names
+$hosts = Get-Content .\hosts.txt
+
+# Define the floor-to-vlan mappings
+$floors = @{
+    "basement" = @(164, 165)
+    "first floor" = @(166, 167, 168, 169)
+    "second floor" = @(170, 171, 173, 174)
+    "third floor" = @(175, 177, 178, 179)
+    "fourth floor" = @(180, 181)
+    "fifth floor" = @(182, 183)
+}
+
+# Initialize the output array
+$output = @()
+
+# Loop through each host name
+$i = 0
+foreach ($host in $hosts) {
+    # Increment the progress counter
+    $i++
+    Write-Progress -Activity "Pinging hosts..." -Status "Host $i of $($hosts.Count)" -PercentComplete ($i / $hosts.Count * 100)
+
+    # Ping the host to get its IP address
+    $ip = Test-Connection -ComputerName $host -Count 1 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty IPV4Address
+
+    # Get the VLAN from the third octet of the IP address
+    $vlan = $ip.GetAddressBytes()[2]
+
+    # Determine the floor based on the VLAN
+    switch ($vlan) {
+        { $_ -in $floors["basement"] } { $floor = "basement" }
+        { $_ -in $floors["first floor"] } { $floor = "first floor" }
+        { $_ -in $floors["second floor"] } { $floor = "second floor" }
+        { $_ -in $floors["third floor"] } { $floor = "third floor" }
+        { $_ -in $floors["fourth floor"] } { $floor = "fourth floor" }
+        { $_ -in $floors["fifth floor"] } { $floor = "fifth floor" }
+        Default { $floor = "unknown" }
+    }
+
+    # Add the data to the output array
+    $output += [PSCustomObject]@{
+        Hostname = $host
+        IPAddress = $ip
+        VLAN = $vlan
+        Floor = $floor
+    }
+}
+
+# Output the data to a CSV file
+$output | Export-Csv -Path "output.csv" -NoTypeInformation
