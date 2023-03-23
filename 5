@@ -1,0 +1,64 @@
+# Define the file name of the list of host names
+$fileName = "hostnames.txt"
+
+# Define the list of floor VLANs
+$basement = @(164, 165)
+$firstFloor = @(166, 167, 168, 169)
+$secondFloor = @(170, 171, 173, 174)
+$thirdFloor = @(175, 177, 178, 179)
+$fourthFloor = @(180, 181)
+$fifthFloor = @(182, 183)
+
+# Read the list of host names from the file
+$hostnames = Get-Content $fileName
+
+# Initialize a command-line progress bar
+Write-Progress -Activity "Pinging hosts..." -Status "Starting..." -PercentComplete 0
+$total = $hostnames.Count
+$progress = 0
+
+# Initialize an array to hold the output data
+$output = @()
+
+# Loop through each host name in the list
+foreach ($hostname in $hostnames) {
+    # Ping the host name to get its IP address
+    $pingResult = Test-Connection -ComputerName $hostname -Count 1 -ErrorAction SilentlyContinue
+    if ($pingResult) {
+        $ipAddress = $pingResult.IPV4Address.IPAddressToString
+
+        # Get the VLAN from the IP address
+        $vlan = $ipAddress.Split(".")[2]
+
+        # Determine the floor based on the VLAN
+        switch ($vlan) {
+            {$basement -contains $_} {$floor = "Basement"}
+            {$firstFloor -contains $_} {$floor = "First"}
+            {$secondFloor -contains $_} {$floor = "Second"}
+            {$thirdFloor -contains $_} {$floor = "Third"}
+            {$fourthFloor -contains $_} {$floor = "Fourth"}
+            {$fifthFloor -contains $_} {$floor = "Fifth"}
+            Default {$floor = "Unknown"}
+        }
+
+        # Add the output data to the array
+        $output += [pscustomobject]@{
+            Hostname = $hostname
+            IPAddress = $ipAddress
+            VLAN = $vlan
+            Floor = $floor
+        }
+    }
+
+    # Update the progress bar
+    $progress++
+    $percentComplete = [int]($progress / $total * 100)
+    $status = "Pinging $hostname [$progress/$total]"
+    Write-Progress -Activity "Pinging hosts..." -Status $status -PercentComplete $percentComplete
+}
+
+# Clear the progress bar
+Write-Progress -Activity "Pinging hosts..." -Status "Finished." -Completed
+
+# Output the data to a CSV file
+$output | Export-Csv -Path "output.csv" -NoTypeInformation
