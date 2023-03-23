@@ -1,0 +1,71 @@
+# Define the file containing the host names
+$fileName = "hostnames.txt"
+$hosts = Get-Content $fileName
+
+# Define the output file
+$outputFile = "results.csv"
+
+# Define the floor VLANs
+$basementVlans = @(164, 165)
+$firstFloorVlans = @(166, 167, 168, 169)
+$secondFloorVlans = @(170, 171, 173, 174)
+$thirdFloorVlans = @(175, 177, 178, 179)
+$fourthFloorVlans = @(180, 181)
+$fifthFloorVlans = @(182, 183)
+
+# Define the progress bar
+$progressBar = $hosts | ForEach-Object -Begin { $i=0 } -Process { 
+    Write-Progress -Activity "Pinging host $_" -Status "Progress" -PercentComplete (($i++)/$hosts.Count*100) 
+}
+
+# Define the function to get the VLAN from an IP address
+function Get-VlanFromIp ($ipAddress) {
+    $adapter = Get-NetIPAddress -IPAddress $ipAddress | 
+               Select-Object -ExpandProperty InterfaceAlias | 
+               ForEach-Object { Get-NetAdapter -Name $_ }
+    return $adapter.VlanID
+}
+
+# Loop through the host names
+$results = foreach ($host in $hosts) {
+    # Ping the host and get the IP address
+    Write-Host "Pinging host $host..."
+    $pingResult = Test-Connection $host -Count 1 -ErrorAction SilentlyContinue
+    if ($pingResult) {
+        $ipAddress = $pingResult.IPV4Address.IPAddressToString
+        Write-Host "IP address of $host is $ipAddress."
+
+        # Get the VLAN from the IP address
+        $vlan = Get-VlanFromIp $ipAddress
+        Write-Host "VLAN of $host is $vlan."
+
+        # Compare the VLAN to the floor
+        switch ($vlan) {
+            { $basementVlans -contains $_ } { $floor = "Basement" }
+            { $firstFloorVlans -contains $_ } { $floor = "First" }
+            { $secondFloorVlans -contains $_ } { $floor = "Second" }
+            { $thirdFloorVlans -contains $_ } { $floor = "Third" }
+            { $fourthFloorVlans -contains $_ } { $floor = "Fourth" }
+            { $fifthFloorVlans -contains $_ } { $floor = "Fifth" }
+            default { $floor = "Unknown" }
+        }
+        Write-Host "Floor of $host is $floor."
+
+        # Create a custom object with the results
+        $obj = New-Object -TypeName PSObject -Property @{
+            Hostname = $host
+            IPAddress = $ipAddress
+            VLAN = $vlan
+            Floor = $floor
+        }
+        $obj
+    } else {
+        Write-Host "Unable to ping $host."
+    }
+}
+
+# Output the results to a CSV file
+$results | Export-Csv -Path $outputFile -NoTypeInformation
+
+# Clear the progress bar
+Clear-Host
